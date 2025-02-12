@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
 
@@ -63,7 +63,7 @@ class AffiliateCalculator:
 
 @app.route('/')
 def home():
-    return "Affiliate Calculator Running! Use POST /calculate with JSON data"
+    return render_template('index.html')
 
 @app.route('/calculate', methods=['POST'])
 def calculate():
