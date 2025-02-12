@@ -6,9 +6,10 @@
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
         .calculator { background: #f5f5f5; padding: 20px; border-radius: 8px; }
         .input-group { margin: 10px 0; }
-        input { padding: 8px; width: 200px; }
+        input { padding: 8px; width: 200px; display: block; margin: 5px 0; }
         button { background: #0070f3; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
         .results { margin-top: 20px; padding: 15px; background: white; border-radius: 4px; }
+        label { display: block; margin: 10px 0; }
     </style>
 </head>
 <body>
@@ -17,9 +18,13 @@
         
         <div class="input-group">
             <label>Clicks: <input type="number" id="clicks" value="10000"></label>
+            <label>Conversions: <input type="number" id="conversions" value="150"></label>
+            <label>Investment ($): <input type="number" id="investment" value="5000"></label>
+            <label>Revenue ($): <input type="number" id="revenue" value="45000"></label>
+            <label>Expenses ($): <input type="number" id="expenses" value="15000"></label>
+            <label>Acquisition Cost ($): <input type="number" id="acquisition_cost" value="120"></label>
+            <label>LTV ($): <input type="number" id="ltv" value="600"></label>
         </div>
-        
-        <!-- Add other input fields similarly -->
         
         <button onclick="calculate()">Calculate</button>
         
@@ -28,27 +33,39 @@
 
     <script>
     async function calculate() {
-        const data = {
-            clicks: document.getElementById('clicks').value,
-            conversions: document.getElementById('conversions').value,
-            investment: document.getElementById('investment').value,
-            revenue: document.getElementById('revenue').value,
-            expenses: document.getElementById('expenses').value,
-            acquisition_cost: document.getElementById('acquisition_cost').value,
-            ltv: document.getElementById('ltv').value
-        };
-
         try {
+            // Show loading state
+            document.getElementById('results').innerHTML = 'Calculating...';
+            
+            const data = {
+                clicks: document.getElementById('clicks').value,
+                conversions: document.getElementById('conversions').value,
+                investment: document.getElementById('investment').value,
+                revenue: document.getElementById('revenue').value,
+                expenses: document.getElementById('expenses').value,
+                acquisition_cost: document.getElementById('acquisition_cost').value,
+                ltv: document.getElementById('ltv').value
+            };
+
             const response = await fetch('/calculate', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)
             });
             
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const result = await response.json();
+            
+            if (result.status === 'error') {
+                throw new Error(result.message);
+            }
+            
             displayResults(result.results);
         } catch (error) {
-            document.getElementById('results').innerHTML = `Error: ${error}`;
+            document.getElementById('results').innerHTML = `Error: ${error.message}`;
         }
     }
 
