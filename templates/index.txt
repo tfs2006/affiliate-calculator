@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Affiliate Calculator Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --danger: #dc2626;
+            --success: #16a34a;
+        }
+
+        body { 
+            font-family: 'Arial', sans-serif; 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            padding: 2rem;
+            background: #f8fafc;
+        }
+
+        .calculator { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
+        .input-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        input {
+            padding: 0.8rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            width: 100%;
+        }
+
+        input:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        button {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .results {
+            margin-top: 2rem;
+            padding: 2rem;
+            background: white;
+            border-radius: 0.5rem;
+        }
+
+        .chart-container {
+            margin-top: 2rem;
+            position: relative;
+            height: 400px;
+        }
+
+        @media (max-width: 768px) {
+            .input-group {
+                grid-template-columns: 1fr;
+            }
+            
+            body {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h1>Professional Affiliate Calculator</h1>
+        
+        <div class="input-group">
+            <div>
+                <label>Clicks</label>
+                <input type="number" id="clicks" value="10000" min="0">
+            </div>
+            <div>
+                <label>Conversions</label>
+                <input type="number" id="conversions" value="150" min="0">
+            </div>
+            <div>
+                <label>Investment ($)</label>
+                <input type="number" id="investment" value="5000" min="0">
+            </div>
+            <div>
+                <label>Revenue ($)</label>
+                <input type="number" id="revenue" value="45000" min="0">
+            </div>
+            <div>
+                <label>Expenses ($)</label>
+                <input type="number" id="expenses" value="15000" min="0">
+            </div>
+            <div>
+                <label>Acquisition Cost ($)</label>
+                <input type="number" id="acquisition_cost" value="120" min="0">
+            </div>
+            <div>
+                <label>LTV ($)</label>
+                <input type="number" id="ltv" value="600" min="0">
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 1rem;">
+            <button class="btn-primary" onclick="calculate()">Calculate</button>
+            <button class="btn-danger" onclick="resetForm()">Reset</button>
+        </div>
+
+        <div class="results" id="results"></div>
+        <div class="chart-container">
+            <canvas id="metricsChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+    let chartInstance = null;
+
+    async function calculate() {
+        try {
+            // Clear previous chart
+            if (chartInstance) chartInstance.destroy();
+            
+            // Show loading
+            document.getElementById('results').innerHTML = '<div style="padding: 1rem; text-align: center;">Calculating... ⏳</div>';
+            
+            // Get values
+            const data = getInputValues();
+            
+            // Basic validation
+            if (data.clicks <= 0 || data.conversions < 0) {
+                throw new Error('❌ Invalid input: Clicks must be > 0\nConversions cannot be negative');
+            }
+
+            // Save to localStorage
+            localStorage.setItem('lastCalc', JSON.stringify(data));
+
+            // API call
+            const response = await fetch('/calculate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            
+            const result = await response.json();
+            
+            if (result.status === 'error') throw new Error(result.message);
+            
+            displayResults(result.results);
+            createChart(result.results);
+
+        } catch (error) {
+            document.getElementById('results').innerHTML = `
+                <div style="color: var(--danger); padding: 1rem; background: #fee2e2; border-radius: 0.5rem;">
+                    ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    function getInputValues() {
+        return {
+            clicks: Number(document.getElementById('clicks').value),
+            conversions: Number(document.getElementById('conversions').value),
+            investment: Number(document.getElementById('investment').value),
+            revenue: Number(document.getElementById('revenue').value),
+            expenses: Number(document.getElementById('expenses').value),
+            acquisition_cost: Number(document.getElementById('acquisition_cost').value),
+            ltv: Number(document.getElementById('ltv').value)
+        };
+    }
+
+    function displayResults(results) {
+        let html = `
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                <div style="padding: 1rem; background: #f0f9ff; border-radius: 0.5rem;">
+                    <h3>📈 Conversion Metrics</h3>
+                    <p>Conversion Rate: <strong>${results.conversion_rate?.toFixed(2) || 0}%</strong></p>
+                    <p>Cost/Conversion: <strong>$${results.cost_per_conversion?.toFixed(2) || 0}</strong></p>
+                </div>
+                
+                <div style="padding: 1rem; background: #f0fdf4; border-radius: 0.5rem;">
+                    <h3>💰 Financial Metrics</h3>
+                    <p>ROI: <strong>${results.roi?.toFixed(2) || 0}%</strong></p>
+                    <p>Profit Margin: <strong>${results.profit_margin?.toFixed(2) || 0}%</strong></p>
+                </div>
+                
+                <div style="padding: 1rem; background: #fff7ed; border-radius: 0.5rem;">
+                    <h3>👥 Customer Metrics</h3>
+                    <p>LTV:CAC Ratio: <strong>${results.ltv_cac_ratio?.toFixed(2) || 0}</strong></p>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('results').innerHTML = html;
+    }
+
+    function createChart(results) {
+        const ctx = document.getElementById('metricsChart').getContext('2d');
+        
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Conversion Rate (%)', 'ROI (%)', 'Profit Margin (%)', 'LTV:CAC Ratio'],
+                datasets: [{
+                    label: 'Performance Metrics',
+                    data: [
+                        results.conversion_rate,
+                        results.roi,
+                        results.profit_margin,
+                        results.ltv_cac_ratio
+                    ],
+                    backgroundColor: [
+                        '#3b82f6',
+                        '#10b981',
+                        '#f59e0b',
+                        '#ef4444'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Performance Overview'
+                    }
+                }
+            }
+        });
+    }
+
+    function resetForm() {
+        document.querySelectorAll('input').forEach(input => input.value = '');
+        localStorage.removeItem('lastCalc');
+        document.getElementById('results').innerHTML = '';
+        if (chartInstance) chartInstance.destroy();
+    }
+
+    // Load previous session
+    window.addEventListener('load', () => {
+        const savedData = localStorage.getItem('lastCalc');
+        if (savedData) {
+            const data = JSON.parse(savedData);
+            Object.entries(data).forEach(([key, value]) => {
+                document.getElementById(key).value = value;
+            });
+        }
+    });
+    </script>
+</body>
+</html>
