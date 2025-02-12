@@ -2,14 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "app.py",  // Replace with your entry file
-      "use": "@vercel/python"
+      "src": "app.py",
+      "use": "@vercel/python",
+      "config": { 
+        "runtime": "python3.12",
+        "maxLambdaSize": "15mb"
+      }
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "app.py"  // Match your entry file
+      "dest": "app.py"
     }
   ]
 }
